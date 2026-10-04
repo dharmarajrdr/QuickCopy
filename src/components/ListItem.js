@@ -8,12 +8,35 @@ function initials(text) {
  * Builds the DOM node for one answer row.
  * @param {{id:string,key:string,value:string}} answer
  * @param {'preview'|'compact'} density
- * @param {{onCopy:Function, onDelete:Function}} handlers
+ * @param {{onCopy:Function, onDelete:Function, isVisible:boolean, onToggleVisibility:Function}} handlers
  */
-export function renderListItem(answer, density, { onCopy, onDelete }) {
+export function renderListItem(answer, density, { onCopy, onDelete, isVisible, onToggleVisibility }) {
   const bodyChildren = [el('div', { class: 'kv-key' }, [answer.key])];
+  let visibilityBtn;
   if (density === 'preview') {
-    bodyChildren.push(el('div', { class: 'kv-value-preview' }, [answer.value]));
+    const valueInput = el('input', {
+      class: 'kv-value-preview',
+      type: isVisible ? 'text' : 'password',
+      value: answer.value,
+      readonly: '',
+      tabindex: '-1',
+      'aria-label': `${answer.key} value`,
+    });
+    visibilityBtn = el('button', {
+      class: `kv-visibility${isVisible ? '' : ' is-hidden'}`,
+      type: 'button',
+      title: isVisible ? 'Hide value' : 'Show value',
+      'aria-label': isVisible ? 'Hide value' : 'Show value',
+      onClick: (e) => {
+        e.stopPropagation();
+        const visible = onToggleVisibility(answer.id, (previous) => !previous);
+        valueInput.type = visible ? 'text' : 'password';
+        visibilityBtn.textContent = visible ? 'Hide' : 'Show';
+        visibilityBtn.title = visible ? 'Hide value' : 'Show value';
+        visibilityBtn.setAttribute('aria-label', visibilityBtn.title);
+      },
+    }, [isVisible ? 'Hide' : 'Show']);
+    bodyChildren.push(valueInput);
   }
 
   const body = el('div', { class: 'kv-body', onClick: () => onCopy(answer) }, bodyChildren);
@@ -22,6 +45,10 @@ export function renderListItem(answer, density, { onCopy, onDelete }) {
     e.stopPropagation();
     onDelete(answer);
   } }, ['✕']);
+  const actions = el('div', { class: 'kv-actions' }, [
+    ...(visibilityBtn ? [visibilityBtn] : []),
+    deleteBtn,
+  ]);
 
-  return el('div', { class: 'kv-item' }, [icon, body, deleteBtn]);
+  return el('div', { class: 'kv-item' }, [icon, body, actions]);
 }
